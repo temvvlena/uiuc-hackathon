@@ -37,6 +37,10 @@ Open-Meteo's 2 m forecast is ambient forecast data, not a barn sensor reading. T
 
 Sources: [Open-Meteo Forecast API](https://open-meteo.com/en/docs), [Open-Meteo Geocoding API](https://open-meteo.com/en/docs/geocoding-api), [dairy THI formula reference](https://veterinaryhandbook.com.au/ContentSection.aspx?id=51).
 
+## End-to-end test
+
+Run `.venv/bin/python -m unittest discover -s tests -v` to exercise a live Dhaka location lookup, Open-Meteo hourly forecast, THI categorization, and inference through the saved model artifact. This end-to-end test requires network access; the project intentionally does not include isolated unit tests.
+
 ## Current validation notes
 
 The leave-one-cow-out results and limitations are tracked in GitHub issues #1 and #2. The data contain categorical THI only, no timestamps or barn/weather measurements, and the physiological workbook has an unresolved cow-ID mismatch with the milk/blood workbooks. Do not interpret these results as validation on live weather or sensor readings.
