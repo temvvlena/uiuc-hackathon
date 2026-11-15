@@ -1,0 +1,7 @@
+.env
+outbox.log
+__pycache__/
+.venv/
+farms/
+backups/
+.DS_Store

@@ -1,0 +1,53 @@
+{
+  "farm": "Demo farm",
+  "place": "Savar",
+  "lat": 23.858,
+  "lon": 90.266,
+  "milk_price_tk": 55,
+  "herd": {
+    "deshi": 0,
+    "half-bred": 2,
+    "high-bred": 2,
+    "unknown": 0
+  },
+  "cows": [
+    {
+      "name": "Lali",
+      "type": "high-bred",
+      "sentinel": true,
+      "baseline_counts": [
+        15,
+        16
+      ]
+    },
+    {
+      "name": "Moni",
+      "type": "high-bred",
+      "sentinel": false,
+      "baseline_counts": [
+        16,
+        15
+      ]
+    },
+    {
+      "name": "Shada",
+      "type": "half-bred",
+      "sentinel": false,
+      "baseline_counts": [
+        15,
+        15
+      ]
+    },
+    {
+      "name": "Kali",
+      "type": "half-bred",
+      "sentinel": false,
+      "baseline_counts": []
+    }
+  ],
+  "more": false,
+  "pending_checkin": null,
+  "breath_log": [],
+  "milk_log": [],
+  "shed": "tin"
+}
