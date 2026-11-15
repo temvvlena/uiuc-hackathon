@@ -49,6 +49,11 @@ def _digits(n):
     return re.sub(r"\D", "", n or "")[-10:]
 
 
+def _is_phone(handle):
+    """A real phone number: not an email address and not a 5 or 6 digit short code."""
+    return "@" not in (handle or "") and len(re.sub(r"\D", "", handle or "")) >= 10
+
+
 def latest_rowid(con):
     return con.execute("SELECT IFNULL(MAX(ROWID), 0) FROM message").fetchone()[0]
 
@@ -60,14 +65,15 @@ def new_replies(con, after, phone):
 
 def new_texts(con, after, phones):
     """[(rowid, text, sender)] received from any of `phones` with ROWID > after."""
-    want = {_digits(p) for p in phones}
+    want = None if phones is None else {_digits(p) for p in phones}   # None = anyone (--open)
     rows = con.execute(
         """SELECT m.ROWID, m.text, m.attributedBody, h.id FROM message m
            JOIN handle h ON m.handle_id = h.ROWID
            WHERE m.ROWID > ? AND m.is_from_me = 0 ORDER BY m.ROWID""", (after,)).fetchall()
     out = []
     for rowid, text, body, handle in rows:
-        if _digits(handle) in want:
+        ok = (_digits(handle) in want) if want is not None else _is_phone(handle)
+        if ok:
             t = text or _decode_body(body)
             if t:
                 out.append((rowid, t.strip(), handle))
@@ -95,30 +101,41 @@ def wait_for_reply(timeout=600, poll=2.0):
 
 
 if __name__ == "__main__":
-    from onboard import purge_stale_signups, route
+    from onboard import farm_path, purge_stale_signups, route, signup_path
     from sms import log_in, send
     ap = argparse.ArgumentParser()
     ap.add_argument("--once", action="store_true")
     ap.add_argument("--dry-run", action="store_true", help="print answers instead of texting them")
+    ap.add_argument("--open", action="store_true",
+                    help="answer any phone number that texts JOIN (for a live audience); "
+                         "texts from other people that are not part of a sign-up are ignored")
     a = ap.parse_args()
     phones = allowed_phones()
-    if not phones:
+    if not phones and not a.open:
         raise SystemExit("Set FARMER_PHONE (or HERDX_PHONES) in .env")
+    known = {_digits(p) for p in phones}
     con = _connect()
     last = latest_rowid(con)
-    print(f"Listening for texts from {', '.join(phones)}. Ctrl-C to stop.")
+    print("OPEN: anyone who texts JOIN gets answered. Ctrl-C to stop." if a.open
+          else f"Listening for texts from {', '.join(phones)}. Ctrl-C to stop.")
     last_purge = 0
     while True:
         if time.time() - last_purge > 60:      # drop sign-ups abandoned half-way
             purge_stale_signups()
             last_purge = time.time()
-        for rowid, text, sender in new_texts(con, last, phones):
+        for rowid, text, sender in new_texts(con, last, None if a.open else phones):
             last = rowid
+            if a.open and _digits(sender) not in known and text.upper() not in ("JOIN", "START") \
+                    and not os.path.exists(signup_path(sender)) and not os.path.exists(farm_path(sender)):
+                continue                       # someone's ordinary text to this phone: stay silent
             log_in(text)
             print(f"\n{sender}: {text}")
-            replies, _ = route(sender, text)
-            for r in replies:
-                send(r, to=sender, dry=a.dry_run)
+            try:
+                replies, _ = route(sender, text)
+                for r in replies:
+                    send(r, to=sender, dry=a.dry_run)
+            except Exception as e:             # one bad text must not stop the listener
+                print(f"[could not answer {sender}] {type(e).__name__}: {e}")
             if a.once:
                 raise SystemExit(0)
         time.sleep(2)
